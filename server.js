@@ -13,7 +13,7 @@ app.post('/api/optimize', async (req, res) => {
       return res.status(400).json({ error: "Code is required" });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({ error: "API Key not configured on Render environment variables" });
@@ -26,7 +26,7 @@ app.post('/api/optimize', async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        "model": "google/gemini-2.5-flash:free",
+        "model": "google/gemini-flash-1.5",
         "messages": [
           { 
             "role": "system", 
@@ -45,7 +45,7 @@ app.post('/api/optimize', async (req, res) => {
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return res.json({ optimizedCode: data.choices[0].message.content });
     } else {
-      return res.status(500).json({ error: "OpenRouter Error", details: data });
+      return res.status(400).json({ openRouterError: data });
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
