@@ -1,58 +1,52 @@
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+const fetch = require('node-fetch'); // Agar Node v18+ hai toh iski zaroorat nahi hoti, par safe side ke liye
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Environment Variables
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://qrigszyiyqyflbotsjgt.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_Iikfkn_k6VyczNX_X_3S4Q_e8tS8JwL";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Real Gemini AI Code Optimization Proxy Endpoint
 app.post('/api/optimize', async (req, res) => {
   try {
-    const { userCode } = req.body;
-    if (!userCode) return res.status(400).json({ error: "Code is required" });
+    const { code, worstCode, prompt } = req.body;
+    const inputCode = code || worstCode || prompt;
 
-    // Updated to Gemini 2.5 Flash Model Endpoint
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    if (!inputCode) {
+      return res.status(400).json({ error: "Code missing in request body" });
+    }
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: "You are an expert cloud infrastructure and AWS code optimizer. Optimize the following code to make it highly efficient. Return ONLY the optimized code without any markdown block formatting or conversational text:\n\n" + userCode
-          }]
-        }]
+        "model": "google/gemini-2.5-flash:free",
+        "messages": [
+          { 
+            "role": "system", 
+            "content": "You are an AI code optimization engine. Return only optimized, efficient, clean code with minimal necessary inline comments." 
+          },
+          { 
+            "role": "user", 
+            "content": `Optimize this code for execution speed and lower cloud infrastructure cost:\n\n${inputCode}` 
+          }
+        ]
       })
     });
 
     const data = await response.json();
 
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-      const cleanCode = data.candidates[0].content.parts[0].text;
-      return res.json({ optimizedCode: cleanCode });
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      const optimizedCode = data.choices[0].message.content;
+      return res.json({ optimizedCode });
     } else {
-      // Returns exact error message from Gemini API if something fails
-      const errorMessage = data.error?.message || "Gemini AI processing failed. Please verify API Key in Render environment variables.";
-      return res.status(500).json({ error: errorMessage });
+      return res.status(500).json({ error: "OpenRouter API Error", details: data });
     }
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-});
-
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.send("⚡ EcoStack AI Production Backend Engine is LIVE!");
 });
 
 const PORT = process.env.PORT || 5000;
