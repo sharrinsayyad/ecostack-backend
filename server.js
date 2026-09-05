@@ -15,21 +15,22 @@ app.post('/api/optimize', async (req, res) => {
 
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
 
-    // Use built-in fetch with full headers required by OpenRouter
+    if (!apiKey) {
+      return res.status(500).json({ error: "API Key not configured on Render environment variables" });
+    }
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey.trim()}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://ecostack-ai1.netlify.app", // Optional for OpenRouter tracking
-        "X-Title": "EcoStack AI"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         "model": "google/gemini-2.5-flash:free",
         "messages": [
           { 
             "role": "system", 
-            "content": "You are an AI code optimization engine. Return only optimized, efficient, clean code with minimal necessary inline comments." 
+            "content": "You are an AI code optimization engine. Return only optimized, efficient, clean code." 
           },
           { 
             "role": "user", 
@@ -44,11 +45,7 @@ app.post('/api/optimize', async (req, res) => {
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return res.json({ optimizedCode: data.choices[0].message.content });
     } else {
-      // Return exact error message from OpenRouter for easy debugging
-      return res.status(500).json({ 
-        error: "OpenRouter Error", 
-        details: data.error ? data.error.message : data 
-      });
+      return res.status(500).json({ error: "OpenRouter Error", details: data });
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
