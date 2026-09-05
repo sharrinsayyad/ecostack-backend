@@ -20,7 +20,8 @@ app.post('/api/optimize', async (req, res) => {
     const { userCode } = req.body;
     if (!userCode) return res.status(400).json({ error: "Code is required" });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // Updated to Gemini 2.5 Flash Model Endpoint
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -36,11 +37,13 @@ app.post('/api/optimize', async (req, res) => {
 
     const data = await response.json();
 
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
       const cleanCode = data.candidates[0].content.parts[0].text;
       return res.json({ optimizedCode: cleanCode });
     } else {
-      return res.status(500).json({ error: "Gemini AI processing failed. Please check API Key." });
+      // Returns exact error message from Gemini API if something fails
+      const errorMessage = data.error?.message || "Gemini AI processing failed. Please verify API Key in Render environment variables.";
+      return res.status(500).json({ error: errorMessage });
     }
   } catch (err) {
     return res.status(500).json({ error: err.message });
