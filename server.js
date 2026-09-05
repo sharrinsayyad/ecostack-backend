@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch'); // Agar Node v18+ hai toh iski zaroorat nahi hoti, par safe side ke liye
 
 const app = express();
 app.use(cors());
@@ -8,17 +7,18 @@ app.use(express.json());
 
 app.post('/api/optimize', async (req, res) => {
   try {
-    const { code, worstCode, prompt } = req.body;
-    const inputCode = code || worstCode || prompt;
+    const inputCode = req.body.code || req.body.worstCode || req.body.prompt || (req.body.contents && req.body.contents[0]?.parts[0]?.text);
 
     if (!inputCode) {
-      return res.status(400).json({ error: "Code missing in request body" });
+      return res.status(400).json({ error: "Code is required" });
     }
+
+    const apiKey = process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -42,7 +42,7 @@ app.post('/api/optimize', async (req, res) => {
       const optimizedCode = data.choices[0].message.content;
       return res.json({ optimizedCode });
     } else {
-      return res.status(500).json({ error: "OpenRouter API Error", details: data });
+      return res.status(500).json({ error: "OpenRouter Error", details: data });
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
