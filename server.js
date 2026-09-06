@@ -7,7 +7,7 @@ app.use(express.json());
 
 app.post('/api/optimize', async (req, res) => {
   try {
-    const inputCode = req.body.code || req.body.worstCode || req.body.prompt;
+    const inputCode = req.body.code || req.body.worstCode;
 
     if (!inputCode) {
       return res.status(400).json({ error: "Code is required" });
@@ -16,7 +16,7 @@ app.post('/api/optimize', async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-      return res.status(500).json({ error: "API Key not configured on Render environment variables" });
+      return res.status(500).json({ error: "API Key missing" });
     }
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -28,14 +28,8 @@ app.post('/api/optimize', async (req, res) => {
       body: JSON.stringify({
         "model": "google/gemini-flash-1.5",
         "messages": [
-          { 
-            "role": "system", 
-            "content": "You are an AI code optimization engine. Return only optimized, efficient, clean code." 
-          },
-          { 
-            "role": "user", 
-            "content": `Optimize this code:\n\n${inputCode}` 
-          }
+          { "role": "system", "content": "You are an AI code optimization engine. Return only clean, optimized code." },
+          { "role": "user", "content": `Optimize this code:\n\n${inputCode}` }
         ]
       })
     });
